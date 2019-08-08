@@ -26,7 +26,41 @@ COLOR_MAP = {'blockage':'#969190'
             , 'resource':'#1b36f7'
             , 'request':'#f71b43'}
 KEEP_COLS = ['id', 'created_at', 'updated_at', 'event_type', 'device_type']
+NEEDS = ['first_aid',
+ 'shelter',
+ 'food',
+ 'financial_aid',
+ 'water',
+ 'evacuation',
+ 'clothing',
+ 'hygiene',]
 
+#!! general issues? needs better name to group under
+ISSUES = ['medical',
+ 'fire_explosion',
+ 'flood',
+ 'violence',
+ 'landslide',
+ 'building_collapse',
+ 'trapped',
+ 'death',]
+
+#!! needs better name to group under
+SUB_ISSUES = ['electrical',
+ 'road_blocked',
+ 'fallen_trees',
+ 'chemical',
+ 'smoke_fire',
+ 'animals',
+ 'swiftwater',
+ 'explosives',
+ 'immobile']
+
+RELEVANT_COLS = ['id', 'updated_at', 'civilian.info.name', 
+        'civilian.info.occupants', 'civilian.info.phone',
+        'civilian.message','uuid', 'lat', 'lon', 'num_people',
+        'num_pets', 'public_name', 'change_status',
+        'needs', 'issues', 'sub_issues']
 
 # use your own mapbox token saved in form {'token':'YOUR_TOKEN'}
 # https://docs.mapbox.com/help/how-mapbox-works/access-tokens/
@@ -144,8 +178,32 @@ def concat_string(row):
         info.append(f"{col}: {row[col]}")
     return '<br />'.join(info)
 
+def consolidate_category(row, cat_list):
+    """List names of items ticked in SOS form
+    Input
+    -----
+    row: df apply row
+    cat_list: list, column names of relevant fields in category
+    Returns
+    -----
+    A list of column names that were ticked in SOS form
+    """
+    requested_needs = [c for c in cat_list if row[c]==1]
+    return tuple(requested_needs)
+
+def consolidate_bools_for_table(civilian_data):
+    """Apply consolidate_category to relevant columns
+    data: df, civilian_data
+    Concern: too much redundant data stored/sent?
+    """
+    data = civilian_data.copy()
+    data['needs'] = data.apply(consolidate_category, axis=1, cat_list=NEEDS)
+    data['issues'] = data.apply(consolidate_category, axis=1, cat_list=ISSUES)
+    data['sub_issues'] = data.apply(consolidate_category, axis=1, cat_list=SUB_ISSUES)
+    return data 
+
 def pre_generated_civilian():
-    '''works with specific format'''
+    '''works with specifically formatted csv'''
     civilians = pd.read_csv('isabella_generated.csv'
                             , converters={'civilian_location':ast.literal_eval})
     civilians['lat'] = civilians['civilian_location'].map(lambda x: x[0][0])
@@ -163,6 +221,10 @@ civilian_data = pd.concat([civilians[KEEP_COLS], payload], axis=1)
 #!! Works but tool tip covers whole map and creates a redundant column - adjust shown columns
 col_names = [x for x in civilian_data.columns if is_string_dtype(civilian_data[x])]
 civilian_data['label'] = civilian_data.apply(concat_string, axis=1)
+
+# consolidate categories
+civilian_data = consolidate_bools_for_table(civilian_data)
+print(civilian_data.iloc[:, -3:].head())
 
 # pre-generated requests
 # civilian_data = pre_generated_civilian()
@@ -207,14 +269,51 @@ app.layout = html.Div([
                 , style={'width':'75%', 'display':'inline-block'})
     ]),
 
-    # Table 
-    # dash_table.DataTable(
-    #     id='civilian_events'
-    #     , columns =[
-    #         {'name': i, 'id':i} for i in civilian_data.columns
-    #     ]
-    #     , fixed_rows={'headers':True, 'data':0}
-    # )
+        # Table 
+        #!! Not displaying array within column properly
+        #!! Make interactive - clicking on row highlights map and vice versa
+    html.Div([
+        html.H1("Civilian Event Details"),
+
+        dash_table.DataTable(
+            id='civilian_events'
+            , columns =[
+                {'name': i, 'id':i} for i in RELEVANT_COLS
+            ]
+            , data=civilian_data[RELEVANT_COLS].to_dict('records')
+            , style_table={
+                'overflowX': 'scroll'
+                , 'overflowY': 'scroll'
+                , 'maxHeight': '500px'
+                }
+            ,style_cell={
+                'minWidth': '0px', 'maxWidth': '180px'
+                , 'whiteSpace': 'normal'
+                }
+        )
+    ]),
+
+    # BANs - quick summary counts
+    #!! CSS to format properly? 
+    html.Div([
+        html.H1('Summary Counts of Civilian Events')
+        , html.Div(
+            html.H2(f"Flood \n {civilian_data['flood'].sum()}")
+            , style={'width': '19%', 'display': 'inline-block'})
+        , html.Div(
+            html.H2(f"Medical \n {civilian_data['medical'].sum()}")
+            , style={'width': '19%', 'display': 'inline-block'})
+        , html.Div(
+            html.H2(f"Fire Explosion \n {civilian_data['fire_explosion'].sum()}")
+            , style={'width': '19%', 'display': 'inline-block'})
+        , html.Div(
+            html.H2(f"Building Collapse \n {civilian_data['building_collapse'].sum()}")
+            , style={'width': '19%', 'display': 'inline-block'})
+        , html.Div(
+            html.H2(f"Trapped \n {civilian_data['trapped'].sum()}")
+            , style={'width': '19%', 'display': 'inline-block'})
+
+    ]),
 
 ])
 
@@ -249,7 +348,7 @@ def make_map(entity_types):
                 , hoverinfo='all'
                 # , customdata # this is for dcc.Graph interactive properties, not initial display 
                 # , hovertext=civilian_data['name'] # if using the pre-generated data
-                , hovertext=civilian_data['label']
+                , hovertext=civilian_data['label'] # alternative, list comprehension
                 , marker={'size':8} 
         ))
 
@@ -266,7 +365,7 @@ def make_map(entity_types):
                 lon=ducks['lon'].mean()
             ),
             pitch=0,
-            zoom=8,
+            zoom=10,
             style='satellite'
     ))
     # fig.update_mapboxes({'style':'satellite'
