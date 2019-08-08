@@ -4,10 +4,12 @@ import dash_html_components as html
 import plotly.graph_objects as go
 import plotly.express as px
 from dash.dependencies import Input, Output, State
+import dash_table 
 
 import pandas as pd
 import numpy as np
 from pandas.io.json import json_normalize
+from pandas.api.types import is_string_dtype
 import datetime
 import ast 
 import json
@@ -52,12 +54,12 @@ def load_ducks(num_ducks=10):
     duck_ids = np.random.choice(duck_id_candidates, size=num_ducks)
     ducks = pd.DataFrame({'device_type': device_types, 'device_id':duck_ids})
     #rand
-    pr_coor = (18.238334,-66.530801)
-    pr_radius = 25000
+    pr_coor = (18.5085, -67.07266)
+    pr_radius = 2500
     ducks['location'] = grd.random_coor(num=num_ducks, radius=pr_radius, center=pr_coor)
     ducks['location'] = ducks['location'].map(lambda x: str(x[0]) + ',' + str(x[1]))
 
-    # Unpack latitude and longitude -- VALIDATE ALWAYS EXIST
+    # Unpack latitude and longitude -- VALIDATE ALWAYS EXIST as string with comma
     ducks[['lat', 'lon']] = ducks['location'].str.split(pat=',', expand=True)
     ducks['lat'] = ducks['lat'].astype(float)
     ducks['lon'] = ducks['lon'].astype(float)
@@ -66,6 +68,8 @@ def load_ducks(num_ducks=10):
 
 def load_resources():
     """Query resources table"""
+
+
     pass 
 
 def load_civilians():
@@ -75,7 +79,6 @@ def load_civilians():
     civilians = pd.read_csv('isabela_duck_deployment.csv'
                         , converters={'payload': ast.literal_eval})
     return civilians
-# unnest json column
 
 def extract_civilian_payload(civilians):
     """Payload is a nested json field 
@@ -91,15 +94,19 @@ def extract_civilian_payload(civilians):
     data_points = len(payload)
 
     #rand
-    pr_coor = (18.238334,-66.530801)
-    pr_radius = 25000
-    payload['civilian.info.location'] = grd.random_coor(num=data_points, radius=pr_radius, center=pr_coor)
-    payload['civilian.info.location'] = payload['civilian.info.location'].map(lambda x: str(x[0]) + ',' + str(x[1]))
+    # pr_coor = (18.510640,-67.052121)
+    pr_radius = 2500
 
-    # Unpack latitude and longitude -- VALIDATE ALWAYS EXIST
-    payload[['lat', 'lon']] = payload['civilian.info.location'].str.split(pat=',', expand=True)
+    # Unpack latitude and longitude -- VALIDATE whether location always exists
+    payload[['lat', 'lon']] = payload['civilian.info.location']\
+                                            .str.strip('[]')\
+                                            .str.split(pat=',', expand=True)
     payload['lat'] = payload['lat'].astype(float)
     payload['lon'] = payload['lon'].astype(float)
+    # Add jitter to original 
+    payload['location'] = payload.apply(lambda x: grd.random_coor(num=1, radius=pr_radius, center=(x['lat'], x['lon']))[0], axis=1)
+    payload['lat'] = payload['location'].map(lambda x:x[0])
+    payload['lon'] = payload['location'].map(lambda x:x[1])
 
     #rand # Name data
     payload['civilian.info.name'] = grd.random_names(num=data_points)
@@ -122,22 +129,48 @@ def extract_civilian_payload(civilians):
     REDUNDANT_COLS = ['civilian.info.location', 'civilian.needs.first-aid', 'civilian.needs.food',
        'civilian.needs.water', 'civilian.status.danger',
        'civilian.status.vacant']
-
+    
 
     return payload.drop(columns=REDUNDANT_COLS)
+
+
+def concat_string(row):
+    """Concatenate column with its content in a dict like display
+    but broken by a newline via <br /> instead of ',' that you would get with
+    using hovertext parameter in trace object. 
+    """
+    info = []
+    for col in col_names:
+        info.append(f"{col}: {row[col]}")
+    return '<br />'.join(info)
+
+def pre_generated_civilian():
+    '''works with specific format'''
+    civilians = pd.read_csv('isabella_generated.csv'
+                            , converters={'civilian_location':ast.literal_eval})
+    civilians['lat'] = civilians['civilian_location'].map(lambda x: x[0][0])
+    civilians['lon'] = civilians['civilian_location'].map(lambda x: x[0][1])
+    return civilians
 
 # --- LOAD DATA --- # 
 # load each source of data into its own df
 
+# generate_requests
 civilians = load_civilians()
 payload = extract_civilian_payload(civilians)
-
 civilian_data = pd.concat([civilians[KEEP_COLS], payload], axis=1)
 
+#!! Works but tool tip covers whole map and creates a redundant column - adjust shown columns
+col_names = [x for x in civilian_data.columns if is_string_dtype(civilian_data[x])]
+civilian_data['label'] = civilian_data.apply(concat_string, axis=1)
+
+# pre-generated requests
+# civilian_data = pre_generated_civilian()
 
 ducks = load_ducks()
 print(ducks['lat'].mean())
 print(ducks['lon'].mean())
+
 
 #!! Add other entities
 
@@ -155,24 +188,33 @@ app.layout = html.Div([
     html.H1("OWL Incident Command Dashboard"),
 
     # Filter 
-        html.Div([
-            # multi-select 
-            dcc.Dropdown(
-                id='filter-entity-types',
-                options=[{'label': i, 'value':i} for i in ENTITY_TYPES],
-                value=ENTITY_TYPES,
-                multi=True
-            ),
-            # storage
-            html.Div(id='filter-df' 
-                    , style={'display':'none'})
-        ]),
+    html.Div([
+        # multi-select 
+        dcc.Dropdown(
+            id='filter-entity-types',
+            options=[{'label': i, 'value':i} for i in ENTITY_TYPES],
+            value=ENTITY_TYPES,
+            multi=True
+        ),
+        # storage
+        html.Div(id='filter-df' 
+                , style={'display':'none'})
+    ]),
 
     # Map
-        html.Div([
-            dcc.Graph(id='map'
-                    , style={'width':'75%', 'display':'inline-block'})
-        ])
+    html.Div([
+        dcc.Graph(id='map'
+                , style={'width':'75%', 'display':'inline-block'})
+    ]),
+
+    # Table 
+    # dash_table.DataTable(
+    #     id='civilian_events'
+    #     , columns =[
+    #         {'name': i, 'id':i} for i in civilian_data.columns
+    #     ]
+    #     , fixed_rows={'headers':True, 'data':0}
+    # )
 
 ])
 
@@ -204,7 +246,10 @@ def make_map(entity_types):
                 , lon=civilian_data['lon']
                 , mode='markers'
                 , name='Civilian Requests'
-                , hovertext=civilian_data['civilian.info.name']
+                , hoverinfo='all'
+                # , customdata # this is for dcc.Graph interactive properties, not initial display 
+                # , hovertext=civilian_data['name'] # if using the pre-generated data
+                , hovertext=civilian_data['label']
                 , marker={'size':8} 
         ))
 
