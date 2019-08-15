@@ -16,16 +16,27 @@ import json
 
 from generate_random_data import Generate_Random_Data as grd 
 
+# comment
+#!! issue
+#@ unused
+#$ replaced by something else
+
 # --- INITIALIZE VARIABLES --- # 
 
 # to be used as as options for multi-select 
 ENTITY_TYPES = ['resource', 'civilian', 'blockage', 'duck']
-#!! color selection to stand out
-COLOR_MAP = {'blockage':'#969190'
-            , 'duck':'#f7e61b'
-            , 'resource':'#1b36f7'
-            , 'request':'#f71b43'}
-KEEP_COLS = ['id', 'created_at', 'updated_at', 'event_type', 'device_type']
+
+#@ Unused 
+# #!! color selection to stand out
+# COLOR_MAP = {'blockage':'#969190'
+#             , 'duck':'#f7e61b'
+#             , 'resource':'#1b36f7'
+#             , 'request':'#f71b43'}
+
+#@ for generating civilian data
+# KEEP_COLS = ['id', 'created_at', 'updated_at', 'event_type', 'device_type']
+
+
 NEEDS = ['first_aid',
  'shelter',
  'food',
@@ -56,9 +67,21 @@ SUB_ISSUES = ['electrical',
  'explosives',
  'immobile']
 
-RELEVANT_COLS = ['id', 'updated_at', 'civilian.info.name', 
-        'civilian.info.occupants', 'civilian.info.phone',
-        'civilian.message','uuid', 'lat', 'lon', 'num_people',
+# Create options for Checklist
+TRUNC_NEEDS = ['medical', 'food','water', 'shelter'] # medical technically in diff category 
+DISPLAY_NEEDS = ['Medical', 'Food', 'Water', 'Shelter']
+help_request_options = [{'label': label, 'value': value} 
+                            for label, value in zip(DISPLAY_NEEDS, TRUNC_NEEDS)]
+
+#$ Replaced by below
+# RELEVANT_COLS = ['id', 'updated_at', 'civilian.info.name', 
+#         'civilian.info.occupants', 'civilian.info.phone',
+#         'civilian.message','uuid', 'lat', 'lon', 'num_people',
+#         'num_pets', 'public_name', 'change_status',
+#         'needs', 'issues', 'sub_issues']
+
+RELEVANT_COLS = ['name', 'phone',
+        'message','duck_id', 'lat', 'lon', 'num_people',
         'num_pets', 'public_name', 'change_status',
         'needs', 'issues', 'sub_issues']
 
@@ -74,31 +97,33 @@ EXTERNAL_STYLESHEETS = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 # -- FUNCTIONS -- # 
 
-def load_ducks(num_ducks=10):
-    """Query ducks table"""
+#$ 
+# def load_ducks(num_ducks=10):
+#     """Query ducks table"""
 
-    #rand Generate ducks 
-    device_types = np.random.choice(['papa-duck', 'mama-duck', 'duck'], size=num_ducks)
-    duck_id_candidates = ['5QOZlOxJECBv', 'cVDXZ9fljbIh', 'Qnhq1G5Rdwuv', 'T1PaUmJjbFcO',
-       '0IUUAhmA99lq', '2lmrjdoJ237Z', 'hAkKlMLz8qgM', 'eeusfZ8AE8mv',
-       'xioGCMhFLPC8', 'iJWI1F0QggHr', 'RV5CEfaDzuTD', 'KxqoWN44irrF',
-       'mtldKD0Eslrz', '0P9pqRkY8yXv', 'NLZFD3yj4Oug', 'Hej9OwFoEdnR',
-       '1gIOGluTtwiW', 'VEuwAoRLhL25', 'r8Zm272RIu5s', 'Szo4vS0LIFrO',
-       'BZlCvDsdq6WR']
-    duck_ids = np.random.choice(duck_id_candidates, size=num_ducks)
-    ducks = pd.DataFrame({'device_type': device_types, 'device_id':duck_ids})
-    #rand
-    pr_coor = (18.5085, -67.07266)
-    pr_radius = 2500
-    ducks['location'] = grd.random_coor(num=num_ducks, radius=pr_radius, center=pr_coor)
-    ducks['location'] = ducks['location'].map(lambda x: str(x[0]) + ',' + str(x[1]))
+#     #rand Generate ducks 
+#     device_types = np.random.choice(['papa-duck', 'mama-duck', 'duck'], size=num_ducks)
+#     duck_id_candidates = ['5QOZlOxJECBv', 'cVDXZ9fljbIh', 'Qnhq1G5Rdwuv', 'T1PaUmJjbFcO',
+#        '0IUUAhmA99lq', '2lmrjdoJ237Z', 'hAkKlMLz8qgM', 'eeusfZ8AE8mv',
+#        'xioGCMhFLPC8', 'iJWI1F0QggHr', 'RV5CEfaDzuTD', 'KxqoWN44irrF',
+#        'mtldKD0Eslrz', '0P9pqRkY8yXv', 'NLZFD3yj4Oug', 'Hej9OwFoEdnR',
+#        '1gIOGluTtwiW', 'VEuwAoRLhL25', 'r8Zm272RIu5s', 'Szo4vS0LIFrO',
+#        'BZlCvDsdq6WR']
+#     duck_ids = np.random.choice(duck_id_candidates, size=num_ducks)
+#     ducks = pd.DataFrame({'device_type': device_types, 'device_id':duck_ids})
+#     #rand
+#     pr_coor = (18.5085, -67.07266)
+#     pr_radius = 2500
+#     ducks['location'] = grd.random_coor(num=num_ducks, radius=pr_radius, center=pr_coor)
+#     ducks['location'] = ducks['location'].map(lambda x: str(x[0]) + ',' + str(x[1]))
 
-    # Unpack latitude and longitude -- VALIDATE ALWAYS EXIST as string with comma
-    ducks[['lat', 'lon']] = ducks['location'].str.split(pat=',', expand=True)
-    ducks['lat'] = ducks['lat'].astype(float)
-    ducks['lon'] = ducks['lon'].astype(float)
+#     # Unpack latitude and longitude -- VALIDATE ALWAYS EXIST as string with comma
+#     ducks[['lat', 'lon']] = ducks['location'].str.split(pat=',', expand=True)
+#     ducks['lat'] = ducks['lat'].astype(float)
+#     ducks['lon'] = ducks['lon'].astype(float)
 
-    return ducks.drop(columns='location')
+#     return ducks.drop(columns='location')
+
 
 def load_resources():
     """Query resources table"""
@@ -106,6 +131,7 @@ def load_resources():
 
     pass 
 
+#@
 def load_civilians():
     """Query requests table"""
         
@@ -114,6 +140,7 @@ def load_civilians():
                         , converters={'payload': ast.literal_eval})
     return civilians
 
+#@
 def extract_civilian_payload(civilians):
     """Payload is a nested json field 
     civilians: df containing civilian requests data 
@@ -202,21 +229,37 @@ def consolidate_bools_for_table(civilian_data):
     data['sub_issues'] = data.apply(consolidate_category, axis=1, cat_list=SUB_ISSUES)
     return data 
 
-def pre_generated_civilian():
-    '''works with specifically formatted csv'''
-    civilians = pd.read_csv('isabella_generated.csv'
-                            , converters={'civilian_location':ast.literal_eval})
-    civilians['lat'] = civilians['civilian_location'].map(lambda x: x[0][0])
-    civilians['lon'] = civilians['civilian_location'].map(lambda x: x[0][1])
+def pre_generated_civilian(path, civ_coordinate):
+    '''works with specifically formatted csv
+    Input
+    -----
+    path: str, file path to csv with pre-generated data
+    civ_coordinate: str, name of column containing civilian location coordinates'''
+    civilians = pd.read_csv(path
+                            , converters={civ_coordinate:ast.literal_eval})
+    civilians['lat'] = civilians[civ_coordinate].map(lambda x: x[0][0])
+    civilians['lon'] = civilians[civ_coordinate].map(lambda x: x[0][1])
     return civilians
+
+def load_ducks(civilian_data):
+    """Load duck ids and locations from pre-generated csv"""
+
+    ducks = civilian_data.groupby(['duck_id', 'duck_coordinates']).size().reset_index()
+    ducks['duck_coordinates'] = ducks['duck_coordinates'].map(ast.literal_eval)
+    ducks[['lat', 'lon']] = pd.DataFrame(ducks['duck_coordinates'].tolist())
+    return ducks
 
 # --- LOAD DATA --- # 
 # load each source of data into its own df
 
+#$ replaced by pre-generated below
 # generate_requests
-civilians = load_civilians()
-payload = extract_civilian_payload(civilians)
-civilian_data = pd.concat([civilians[KEEP_COLS], payload], axis=1)
+# civilians = load_civilians()
+# payload = extract_civilian_payload(civilians)
+# civilian_data = pd.concat([civilians[KEEP_COLS], payload], axis=1)
+
+# Load pre-generated requests
+civilian_data = pre_generated_civilian('./t_fake_data.csv', 'civilian_coordinates')
 
 #!! Works but tool tip covers whole map and creates a redundant column - adjust shown columns
 col_names = [x for x in civilian_data.columns if is_string_dtype(civilian_data[x])]
@@ -226,10 +269,8 @@ civilian_data['label'] = civilian_data.apply(concat_string, axis=1)
 civilian_data = consolidate_bools_for_table(civilian_data)
 print(civilian_data.iloc[:, -3:].head())
 
-# pre-generated requests
-# civilian_data = pre_generated_civilian()
 
-ducks = load_ducks()
+ducks = load_ducks(civilian_data)
 print(ducks['lat'].mean())
 print(ducks['lon'].mean())
 
@@ -249,7 +290,7 @@ app.layout = html.Div([
      # Title
     html.H1("OWL Incident Command Dashboard"),
 
-    # Filter 
+    # Filter by entity
     html.Div([
         # multi-select 
         dcc.Dropdown(
@@ -263,10 +304,32 @@ app.layout = html.Div([
                 , style={'display':'none'})
     ]),
 
-    # Map
+    
+
     html.Div([
+        
+        # Filter by request type
+            # a single multi
+        html.Div([
+            html.P('Type of Help Requested:'),
+            dcc.Checklist(
+                id='filter-request-types',
+                options=help_request_options,
+                values=TRUNC_NEEDS
+            )
+            
+            ],
+            style={'width':'15%', 'float':'left'}
+        ),
+
+
+        html.Div([
         dcc.Graph(id='map'
-                , style={'width':'75%', 'display':'inline-block'})
+                , style={'width':'85%', 'display':'inline-block'})
+        ]),
+
+    # Map
+    
     ]),
 
         # Table 
@@ -274,7 +337,7 @@ app.layout = html.Div([
         #!! Make interactive - clicking on row highlights map and vice versa
     html.Div([
         html.H1("Civilian Event Details"),
-
+        #!! Not yet interactive
         dash_table.DataTable(
             id='civilian_events'
             , columns =[
@@ -296,22 +359,35 @@ app.layout = html.Div([
     # BANs - quick summary counts
     #!! CSS to format properly? 
     html.Div([
-        html.H1('Summary Counts of Civilian Events')
-        , html.Div(
-            html.H2(f"Flood \n {civilian_data['flood'].sum()}")
-            , style={'width': '19%', 'display': 'inline-block'})
-        , html.Div(
-            html.H2(f"Medical \n {civilian_data['medical'].sum()}")
-            , style={'width': '19%', 'display': 'inline-block'})
-        , html.Div(
-            html.H2(f"Fire Explosion \n {civilian_data['fire_explosion'].sum()}")
-            , style={'width': '19%', 'display': 'inline-block'})
-        , html.Div(
-            html.H2(f"Building Collapse \n {civilian_data['building_collapse'].sum()}")
-            , style={'width': '19%', 'display': 'inline-block'})
-        , html.Div(
-            html.H2(f"Trapped \n {civilian_data['trapped'].sum()}")
-            , style={'width': '19%', 'display': 'inline-block'})
+        html.H1('Summary Counts of Civilian Requests'),
+        #!! Not interactive - not filtered - but should we allow clicking bar to filter?
+            # would be tableau like but low priority
+        dcc.Graph(
+            id='requests-bar',
+            figure=px.bar(civilian_data[TRUNC_NEEDS]\
+                            .melt(var_name='Request Type')\
+                            .groupby('Request Type', as_index=False)\
+                            .sum(),
+                        x='Request Type',
+                        y='value')\
+                    .update_yaxes(title='Number of Requests') # chained layout edit
+        )
+        #& replaced with bar chart - what are better BANs?
+        # , html.Div(
+        #     html.H2(f"Flood \n {civilian_data['flood'].sum()}")
+        #     , style={'width': '19%', 'display': 'inline-block'})
+        # , html.Div(
+        #     html.H2(f"Medical \n {civilian_data['medical'].sum()}")
+        #     , style={'width': '19%', 'display': 'inline-block'})
+        # , html.Div(
+        #     html.H2(f"Fire Explosion \n {civilian_data['fire_explosion'].sum()}")
+        #     , style={'width': '19%', 'display': 'inline-block'})
+        # , html.Div(
+        #     html.H2(f"Building Collapse \n {civilian_data['building_collapse'].sum()}")
+        #     , style={'width': '19%', 'display': 'inline-block'})
+        # , html.Div(
+        #     html.H2(f"Trapped \n {civilian_data['trapped'].sum()}")
+        #     , style={'width': '19%', 'display': 'inline-block'})
 
     ]),
 
@@ -322,9 +398,16 @@ app.layout = html.Div([
 
 @app.callback(
     Output('map', 'figure'),
-    [Input('filter-entity-types', "value")]
+    [Input('filter-entity-types', "value"),
+     Input('filter-request-types', 'values')]
 )
-def make_map(entity_types):
+def make_map(entity_types, request_types):
+
+    #!! currently resetting zoom of map each time - need to save fig layout as state
+    # Populate string with request type name and use pandas query
+    request_mask = '|'.join([f'{col} == 1' for col in request_types])
+    typed_data = civilian_data.query(request_mask)
+
     fig = go.Figure()
 
     # Add trace if requested by entity_types multi-select
@@ -335,25 +418,26 @@ def make_map(entity_types):
                 , lon =ducks['lon']
                 , mode='markers'
                 , name='Active Ducks'
-                , hovertext=ducks['device_id']
+                , hovertext=ducks['duck_id']
                 , marker={'symbol':'dog-park'} # can we color this?
         ))
     #!! How should we display the request information? Table? 
+        #!! How to show request if asking for multiple things?
     if 'civilian' in entity_types:
         fig.add_trace(go.Scattermapbox(
-                  lat=civilian_data['lat']
-                , lon=civilian_data['lon']
+                  lat=typed_data['lat']
+                , lon=typed_data['lon']
                 , mode='markers'
                 , name='Civilian Requests'
                 , hoverinfo='all'
                 # , customdata # this is for dcc.Graph interactive properties, not initial display 
-                # , hovertext=civilian_data['name'] # if using the pre-generated data
-                , hovertext=civilian_data['label'] # alternative, list comprehension
+                , hovertext=typed_data['name'] # if using the pre-generated data
+                # , hovertext=typed_data['label'] # alternative, list comprehension
                 , marker={'size':8} 
         ))
 
     fig.update_layout(
-        title='Entity Map',
+        # title='Entity Map',#@ awkward placement
         autosize=True,
         hovermode='closest',
         showlegend=False,
@@ -368,6 +452,7 @@ def make_map(entity_types):
             zoom=10,
             style='satellite'
     ))
+    #$ replaced by above
     # fig.update_mapboxes({'style':'satellite'
     #                  , 'center':{'lat': ducks['lat'].mean(), 'lon':ducks['lon'].mean()}
     #                 })
