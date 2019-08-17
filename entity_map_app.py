@@ -13,6 +13,7 @@ from pandas.api.types import is_string_dtype
 import datetime
 import ast 
 import json
+import textwrap
 
 from generate_random_data import Generate_Random_Data as grd 
 
@@ -91,6 +92,13 @@ with open('./credentials.json', 'r') as f:
     credentials = json.load(f)
 MAPBOX_TOKEN = credentials['token']
 # px.set_mapbox_access_token(MAPBOX_TOKEN)
+
+styles = {
+    'pre': {
+        'border': 'thin lightgrey solid',
+        'overflowX': 'scroll'
+    }
+}
 
 EXTERNAL_STYLESHEETS = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
@@ -203,7 +211,7 @@ def concat_string(row):
     info = []
     for col in col_names:
         info.append(f"{col}: {row[col]}")
-    return '<br />'.join(info)
+    return '<br>'.join(info)
 
 def consolidate_category(row, cat_list):
     """List names of items ticked in SOS form
@@ -244,7 +252,10 @@ def pre_generated_civilian(path, civ_coordinate):
 def load_ducks(civilian_data):
     """Load duck ids and locations from pre-generated csv"""
 
-    ducks = civilian_data.groupby(['duck_id', 'duck_coordinates']).size().reset_index()
+    ducks = civilian_data.groupby(['duck_id', 'duck_coordinates'])\
+                            .size()\
+                            .reset_index()\
+                            .rename(columns={0:'Number of Requests'})
     ducks['duck_coordinates'] = ducks['duck_coordinates'].map(ast.literal_eval)
     ducks[['lat', 'lon']] = pd.DataFrame(ducks['duck_coordinates'].tolist())
     return ducks
@@ -261,14 +272,13 @@ def load_ducks(civilian_data):
 # Load pre-generated requests
 civilian_data = pre_generated_civilian('./t_fake_data.csv', 'civilian_coordinates')
 
-#!! Works but tool tip covers whole map and creates a redundant column - adjust shown columns
-col_names = [x for x in civilian_data.columns if is_string_dtype(civilian_data[x])]
-civilian_data['label'] = civilian_data.apply(concat_string, axis=1)
-
 # consolidate categories
 civilian_data = consolidate_bools_for_table(civilian_data)
 print(civilian_data.iloc[:, -3:].head())
 
+#!! Works but tool tip covers whole map and creates a redundant column - adjust shown columns
+col_names = [x for x in civilian_data.columns if is_string_dtype(civilian_data[x])]
+civilian_data['label'] = civilian_data.apply(concat_string, axis=1)
 
 ducks = load_ducks(civilian_data)
 print(ducks['lat'].mean())
@@ -299,7 +309,7 @@ app.layout = html.Div([
             value=ENTITY_TYPES,
             multi=True
         ),
-        # storage
+        #@ # storage 
         html.Div(id='filter-df' 
                 , style={'display':'none'})
     ]),
@@ -307,53 +317,37 @@ app.layout = html.Div([
     
 
     html.Div([
-        
-        # Filter by request type
-            # a single multi
+           
         html.Div([
+            # Filter by request type
+             # a single checklist 
             html.P('Type of Help Requested:'),
             dcc.Checklist(
                 id='filter-request-types',
                 options=help_request_options,
                 values=TRUNC_NEEDS
-            )
-            
+            ),
+
+            # Show hover info
+            dcc.Markdown(textwrap.dedent(
+                """
+                **Hover Data**
+                """)
+                ),
+            html.Pre(
+                id='hover-data',
+                style=styles['pre']
+                )
             ],
             style={'width':'15%', 'float':'left'}
         ),
 
-
-        html.Div([
-        dcc.Graph(id='map'
-                , style={'width':'85%', 'display':'inline-block'})
-        ]),
-
-    # Map
+            # Map
+            html.Div([
+            dcc.Graph(id='map'
+                    , style={'width':'85%', 'display':'inline-block'})
+            ]),
     
-    ]),
-
-        # Table 
-        #!! Not displaying array within column properly
-        #!! Make interactive - clicking on row highlights map and vice versa
-    html.Div([
-        html.H1("Civilian Event Details"),
-        #!! Not yet interactive
-        dash_table.DataTable(
-            id='civilian_events'
-            , columns =[
-                {'name': i, 'id':i} for i in RELEVANT_COLS
-            ]
-            , data=civilian_data[RELEVANT_COLS].to_dict('records')
-            , style_table={
-                'overflowX': 'scroll'
-                , 'overflowY': 'scroll'
-                , 'maxHeight': '500px'
-                }
-            ,style_cell={
-                'minWidth': '0px', 'maxWidth': '180px'
-                , 'whiteSpace': 'normal'
-                }
-        )
     ]),
 
     # BANs - quick summary counts
@@ -389,10 +383,37 @@ app.layout = html.Div([
         #     html.H2(f"Trapped \n {civilian_data['trapped'].sum()}")
         #     , style={'width': '19%', 'display': 'inline-block'})
 
+        ],
+        style = {'width': '50%', 'display':'inline-block'}
+    ),
+
+        # Table 
+        #!! Not displaying array within column properly
+        #!! Make interactive - clicking on row highlights map and vice versa
+    html.Div([
+        html.H1("Civilian Event Details"),
+        #!! Not yet interactive
+        dash_table.DataTable(
+            id='civilian_events'
+            , columns =[
+                {'name': i, 'id':i} for i in RELEVANT_COLS
+            ]
+            , data=civilian_data[RELEVANT_COLS].to_dict('records')
+            , style_table={
+                'overflowX': 'scroll'
+                , 'overflowY': 'scroll'
+                , 'maxHeight': '500px'
+                }
+            ,style_cell={
+                'minWidth': '0px', 'maxWidth': '180px'
+                , 'whiteSpace': 'normal'
+                }
+        )
     ]),
 
-])
 
+
+])
 
 
 
@@ -418,8 +439,13 @@ def make_map(entity_types, request_types):
                 , lon =ducks['lon']
                 , mode='markers'
                 , name='Active Ducks'
+                , customdata = ducks['Number of Requests'].map(lambda x: f'Number of Requests: {x}')
                 , hovertext=ducks['duck_id']
-                , marker={'symbol':'dog-park'} # can we color this?
+                , marker={
+                    'color': 'orange',
+                    'size': 8,
+                    #   'symbol':'dog-park', # can we color this?
+                    } 
         ))
     #!! How should we display the request information? Table? 
         #!! How to show request if asking for multiple things?
@@ -430,10 +456,12 @@ def make_map(entity_types, request_types):
                 , mode='markers'
                 , name='Civilian Requests'
                 , hoverinfo='all'
-                # , customdata # this is for dcc.Graph interactive properties, not initial display 
-                , hovertext=typed_data['name'] # if using the pre-generated data
-                # , hovertext=typed_data['label'] # alternative, list comprehension
-                , marker={'size':8} 
+                 , customdata= typed_data['label'] # this is for dcc.Graph interactive properties, not initial display 
+                # , hovertext=typed_data['name'] # if using the pre-generated data
+                , hovertext=typed_data['label'] # alternatively, list comprehension
+                , marker={'size':8,
+                          'color': 'blue',
+                           } 
         ))
 
     fig.update_layout(
@@ -441,6 +469,7 @@ def make_map(entity_types, request_types):
         autosize=True,
         hovermode='closest',
         showlegend=False,
+        clickmode= 'event+select', 
         mapbox=go.layout.Mapbox(
             accesstoken=MAPBOX_TOKEN,
             bearing=0,
@@ -458,6 +487,21 @@ def make_map(entity_types, request_types):
     #                 })
     return fig
 
+
+@app.callback(
+    Output('hover-data', 'children'),
+    [Input('map', 'hoverData')]
+)
+def display_hover_data(hoverData):
+    '''Display custom info when hovering over an entity
+    
+    Note: Flask auto escapes html, so need to replace <br> with \n 
+    while Dash hovertext accepts <br> as linebreak butnot \n'''
+
+    point = hoverData['points'][0] # go down to hovertext level
+    render_text = point['customdata'].replace('<br>', '\n')
+    return render_text
+    # return textwrap.indent(render_text, ' ', lambda line: True)
 
 # -- RUN APP --- # 
 
