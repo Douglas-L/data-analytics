@@ -426,8 +426,10 @@ def make_map(entity_types, request_types):
 
     #!! currently resetting zoom of map each time - need to save fig layout as state
     # Populate string with request type name and use pandas query
+    print(request_types)
     request_mask = '|'.join([f'{col} == 1' for col in request_types])
-    typed_data = civilian_data.query(request_mask)
+    if request_mask:
+        typed_data = civilian_data.query(request_mask)
 
     fig = go.Figure()
 
@@ -442,14 +444,14 @@ def make_map(entity_types, request_types):
                 , customdata = ducks['Number of Requests'].map(lambda x: f'Number of Requests: {x}')
                 , hovertext=ducks['duck_id']
                 , marker={
-                    'color': 'orange',
+                    'color': 'yellow',
                     'size': 8,
                     #   'symbol':'dog-park', # can we color this?
                     } 
         ))
     #!! How should we display the request information? Table? 
         #!! How to show request if asking for multiple things?
-    if 'civilian' in entity_types:
+    if 'civilian' in entity_types and request_mask:
         fig.add_trace(go.Scattermapbox(
                   lat=typed_data['lat']
                 , lon=typed_data['lon']
@@ -460,7 +462,7 @@ def make_map(entity_types, request_types):
                 # , hovertext=typed_data['name'] # if using the pre-generated data
                 , hovertext=typed_data['label'] # alternatively, list comprehension
                 , marker={'size':8,
-                          'color': 'blue',
+                          'color': 'red',
                            } 
         ))
 
