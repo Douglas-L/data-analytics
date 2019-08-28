@@ -25,7 +25,11 @@ import plotly.express as px
 #     credentials = json.load(f)
 # MAPBOX_TOKEN = credentials['token']
 px.set_mapbox_access_token('pk.eyJ1IjoidHFyYWhtYW4iLCJhIjoiY2l0bmh2dnU2MDRvZzJ6bDQ4OWFheXU3NCJ9.bY7m05QGUHV1jQvwwHX-FA')
+<<<<<<< HEAD
 #mapbox_access_token = 'pk.eyJ1IjoiamFja2x1byIsImEiOiJjajNlcnh3MzEwMHZtMzNueGw3NWw5ZXF5In0.fk8k06T96Ml9CLGgKmk81w'
+=======
+mapbox_access_token = 'pk.eyJ1IjoidHFyYWhtYW4iLCJhIjoiY2l0bmh2dnU2MDRvZzJ6bDQ4OWFheXU3NCJ9.bY7m05QGUHV1jQvwwHX-FA'
+>>>>>>> update
 # Reading in the data
 isabela = pd.read_csv("isabela_duck_deployment.csv")
 
@@ -92,6 +96,30 @@ fake_data['duck_longitude'] = fake_data['duck_coordinates'].apply(lambda x: x[1]
 fake_data['civilian_latitude'] = fake_data['civilian_coordinates'].apply(lambda x: x[0][0])
 fake_data['civilian_longitude'] = fake_data['civilian_coordinates'].apply(lambda x: x[0][1])
 
+<<<<<<< HEAD
+=======
+# Parse the duck message path from string into a tuple
+def extract_path(path):
+    remove_array = path.replace('array', '').replace('(', '').replace(')', '')
+    list_of_ducks = ast.literal_eval(remove_array)
+    # use tuple of tuples so order is preserved and hashable to determine uniqueness
+    duck_tuples = [tuple(duck) for duck in list_of_ducks]
+    duck_tuples = tuple(duck_tuples)
+    return duck_tuples
+
+# Data cleaning of path
+def clean_the_path(path):
+    if isinstance(path, str):
+        return ast.literal_eval(path.replace('array', '').replace('(', '').replace(')', ''))
+    else:
+        return path
+
+isabela['clean_path'] = isabela['path_coordinates'].map(clean_the_path)
+
+# Getting the first duck_id
+isabela['first_duck'] = isabela['path'].apply(lambda x: x[:12])
+
+>>>>>>> update
 ### Dashboard ###
 
 EXTERNAL_STYLESHEETS = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -116,6 +144,7 @@ app.layout = html.Div([
             ),
         html.P(
             dcc.Dropdown(
+<<<<<<< HEAD
                 id='medical-fiter',
                 options=option,
                 value=[1,0],
@@ -149,17 +178,77 @@ app.layout = html.Div([
 
         ],
              style={"width": "15%", "float": "left"},
+=======
+                id='medical-filter',
+                options=option,
+                value=[YN.get(i) for i in YN],
+                multi=True,
+                )
+            ),
+        # Dropdown menu for Food
+        html.P(
+            'Food Needed:',
+            ),
+        html.P(
+            dcc.Dropdown(
+                id='food-filter',
+                options=option,
+                value=[YN.get(i) for i in YN],
+                multi=True,
+                )
+            ),
+        # Dropdown menu for Water
+        html.P(
+            'Water Needed:',
+            ),
+        html.P(
+            dcc.Dropdown(
+                id='water-filter',
+                options=option,
+                value=[YN.get(i) for i in YN],
+                multi=True,
+                )
+            ),
+        html.P(
+            'Duck Path'
+        ),
+        html.P(
+            dcc.Dropdown(
+                id='duck_id',
+                options=[{'label':i, 'value':i} for i in isabela['first_duck'].unique()],
+            )
+        ),
+        html.P(
+            dcc.Dropdown(
+                id='path_id',
+                )
+        ),
+        ],
+        style={"width": "15%", "float": "left"},
+>>>>>>> update
         ),
 
     # Map
     html.Div([
         dcc.Graph(id='map',
                   style={'width':'85%', 'display':'inline-block'})
+<<<<<<< HEAD
+=======
+    ]),
+
+    #Bar Graph
+    html.Div([
+        dcc.Graph(id='food-bar',
+                  figure=px.bar(fake_data, x='food'),
+                  style={'width':'50%', 'display':'inline-block'}
+                  )
+>>>>>>> update
     ])
 ])
 
 @app.callback(
     Output('map', 'figure'),
+<<<<<<< HEAD
     [Input('medical-filter', 'value')]
 )
 def map_graph(med):
@@ -176,7 +265,86 @@ def map_graph(med):
                          })
     return fig
 
+=======
+    [Input('medical-filter', 'value'),
+     Input('food-filter', 'value'),
+     Input('water-filter', 'value'),
+     Input('duck_id','value'),
+     Input('path_id','value')]
+)
+def map_graph(med, food, water, duck_id, path_id):
+    df = fake_data[fake_data['medical'].isin(med)]
+    df = df[df['food'].isin(food)]
+    df = df[df['water'].isin(water)]
+    fig = go.Figure()
+    fig.add_trace(go.Scattermapbox(
+        lat=isabela['coordinates'].apply(lambda x: ast.literal_eval(x)[0]).tolist(),
+        lon=isabela['coordinates'].apply(lambda x: ast.literal_eval(x)[1]).tolist(),
+        marker={
+            'size':10,
+            'color':'#FFFF00'
+        }
+    ))
+    if duck_id:
+        dataframe=isabela[isabela['first_duck']==duck_id]
+        if path_id:
+            try:
+                path = dataframe.iloc[path_id]['clean_path']
+            except:
+                path = dataframe.iloc[0]['clean_path']
+            fig.add_trace(go.Scattermapbox(
+                lat = [i[0] for i in path],
+                lon = [i[1] for i in path],
+                mode='lines+markers'
+            ))
+    else:
+        pass
+
+    fig.add_trace(go.Scattermapbox(
+        lat=df['civilian_latitude'].tolist(),
+        lon=df['civilian_longitude'].tolist(),
+    ))
+    fig.update_layout(
+        autosize=True,
+        hovermode='closest',
+        showlegend=False,
+        clickmode='event+select',
+        mapbox=go.layout.Mapbox(
+            accesstoken=mapbox_access_token,
+            center=go.layout.mapbox.Center(
+                    lat=fake_data['duck_latitude'].mean(),
+                    lon=fake_data['duck_longitude'].mean()
+                    ),
+            zoom=14,
+            ),
+        )
+    return fig
+
+@app.callback(
+    Output('path_id', 'options'),
+    [Input('duck_id','value')]
+)
+def get_options(duck_id):
+    df = isabela[isabela['first_duck']==duck_id]
+    return [{'label':idx, 'value':idx} for idx,val in enumerate(df['clean_path'])]
+
+>>>>>>> update
 ### RUNNING APP ###
 
 if __name__ == '__main__':
     app.run_server(debug=True)
+<<<<<<< HEAD
+=======
+
+# Questions to ask:
+# Are there specific scenario's for medical emergencies?
+# When would you need more details when it is a medical emergency?
+# What is the average Responder prepared for? What are they not prepared for?
+# Are there any special Responder units for particular scenarios?
+# In a desparate situation, when you (the Responder) cannot get in touch with IC, what would be useful information to see in a map?
+# What key locations do you (the Responder) need to have on a map?
+# Being able to identify who is submitting a message
+# Selecting the emergencies that command center can handle
+# First Responders Priortize the hover database
+#
+>>>>>>> update
