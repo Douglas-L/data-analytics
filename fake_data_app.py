@@ -295,7 +295,8 @@ def map_graph(med, food, water, duck_id, path_id):
             fig.add_trace(go.Scattermapbox(
                 lat = [i[0] for i in path],
                 lon = [i[1] for i in path],
-                mode='lines+markers'
+                mode='lines+markers',
+
             ))
     else:
         pass
