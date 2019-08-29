@@ -26,10 +26,18 @@ import plotly.express as px
 # MAPBOX_TOKEN = credentials['token']
 px.set_mapbox_access_token('pk.eyJ1IjoidHFyYWhtYW4iLCJhIjoiY2l0bmh2dnU2MDRvZzJ6bDQ4OWFheXU3NCJ9.bY7m05QGUHV1jQvwwHX-FA')
 <<<<<<< HEAD
+<<<<<<< HEAD
 #mapbox_access_token = 'pk.eyJ1IjoiamFja2x1byIsImEiOiJjajNlcnh3MzEwMHZtMzNueGw3NWw5ZXF5In0.fk8k06T96Ml9CLGgKmk81w'
 =======
 mapbox_access_token = 'pk.eyJ1IjoidHFyYWhtYW4iLCJhIjoiY2l0bmh2dnU2MDRvZzJ6bDQ4OWFheXU3NCJ9.bY7m05QGUHV1jQvwwHX-FA'
 >>>>>>> update
+=======
+
+mapbox_access_token = 'pk.eyJ1IjoidHFyYWhtYW4iLCJhIjoiY2l0bmh2dnU2MDRvZzJ6bDQ4OWFheXU3NCJ9.bY7m05QGUHV1jQvwwHX-FA'
+
+#mapbox_access_token = 'pk.eyJ1IjoiamFja2x1byIsImEiOiJjajNlcnh3MzEwMHZtMzNueGw3NWw5ZXF5In0.fk8k06T96Ml9CLGgKmk81w'
+
+>>>>>>> update path
 # Reading in the data
 isabela = pd.read_csv("isabela_duck_deployment.csv")
 
@@ -97,7 +105,10 @@ fake_data['civilian_latitude'] = fake_data['civilian_coordinates'].apply(lambda 
 fake_data['civilian_longitude'] = fake_data['civilian_coordinates'].apply(lambda x: x[0][1])
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> update path
 # Parse the duck message path from string into a tuple
 def extract_path(path):
     remove_array = path.replace('array', '').replace('(', '').replace(')', '')
@@ -119,7 +130,10 @@ isabela['clean_path'] = isabela['path_coordinates'].map(clean_the_path)
 # Getting the first duck_id
 isabela['first_duck'] = isabela['path'].apply(lambda x: x[:12])
 
+<<<<<<< HEAD
 >>>>>>> update
+=======
+>>>>>>> update path
 ### Dashboard ###
 
 EXTERNAL_STYLESHEETS = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -144,6 +158,7 @@ app.layout = html.Div([
             ),
         html.P(
             dcc.Dropdown(
+<<<<<<< HEAD
 <<<<<<< HEAD
                 id='medical-fiter',
                 options=option,
@@ -179,6 +194,8 @@ app.layout = html.Div([
         ],
              style={"width": "15%", "float": "left"},
 =======
+=======
+>>>>>>> update path
                 id='medical-filter',
                 options=option,
                 value=[YN.get(i) for i in YN],
@@ -224,8 +241,12 @@ app.layout = html.Div([
                 )
         ),
         ],
+<<<<<<< HEAD
         style={"width": "15%", "float": "left"},
 >>>>>>> update
+=======
+             style={"width": "15%", "float": "left"},
+>>>>>>> update path
         ),
 
     # Map
@@ -233,7 +254,10 @@ app.layout = html.Div([
         dcc.Graph(id='map',
                   style={'width':'85%', 'display':'inline-block'})
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> update path
     ]),
 
     #Bar Graph
@@ -242,12 +266,16 @@ app.layout = html.Div([
                   figure=px.bar(fake_data, x='food'),
                   style={'width':'50%', 'display':'inline-block'}
                   )
+<<<<<<< HEAD
 >>>>>>> update
+=======
+>>>>>>> update path
     ])
 ])
 
 @app.callback(
     Output('map', 'figure'),
+<<<<<<< HEAD
 <<<<<<< HEAD
     [Input('medical-filter', 'value')]
 )
@@ -266,6 +294,8 @@ def map_graph(med):
     return fig
 
 =======
+=======
+>>>>>>> update path
     [Input('medical-filter', 'value'),
      Input('food-filter', 'value'),
      Input('water-filter', 'value'),
@@ -329,13 +359,19 @@ def get_options(duck_id):
     df = isabela[isabela['first_duck']==duck_id]
     return [{'label':idx, 'value':idx} for idx,val in enumerate(df['clean_path'])]
 
+<<<<<<< HEAD
 >>>>>>> update
+=======
+>>>>>>> update path
 ### RUNNING APP ###
 
 if __name__ == '__main__':
     app.run_server(debug=True)
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> update path
 
 # Questions to ask:
 # Are there specific scenario's for medical emergencies?
@@ -348,4 +384,7 @@ if __name__ == '__main__':
 # Selecting the emergencies that command center can handle
 # First Responders Priortize the hover database
 #
+<<<<<<< HEAD
 >>>>>>> update
+=======
+>>>>>>> update path
