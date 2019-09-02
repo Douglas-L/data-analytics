@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import ast
 import json
+import textwrap
 
 ### Random Imports
 from generate_random_data import Generate_Random_Data as grd
@@ -25,7 +26,18 @@ import plotly.express as px
 with open('./credentials.json', 'r') as f:
     credentials = json.load(f)
 MAPBOX_TOKEN = credentials['token']
-print(MAPBOX_TOKEN)
+
+# CSS 
+styles = {
+    'pre': {
+        'border': 'thin lightgrey solid',
+        'overflowX': 'scroll'
+    }
+}
+
+# for debugging
+pd.set_option('max_colwidth', -1)
+pd.set_option('display.max_columns', 200)
 
 # Reading in the data
 isabela = pd.read_csv("isabela_duck_deployment.csv")
@@ -84,7 +96,7 @@ def get_coordinates(row):
 
 # Applying 'get_coordinates' to get the coordinates of duck and civilians
 fake_data['coordinates'] = fake_data.apply(get_coordinates, axis=1)
-print(fake_data.head())
+
 # Separating 'coordinates' into 'duck_coordinates' and 'civilian coordinates'
 fake_data[['duck_coordinates', 'civilian_coordinates']] = fake_data['coordinates'].apply(pd.Series)
 
@@ -117,9 +129,16 @@ isabela['clean_path'] = isabela['path_coordinates'].map(clean_the_path)
 
 # Getting the first duck_id
 isabela['first_duck'] = isabela['path'].apply(lambda x: x[:12])
+print(isabela.dtypes)
+print(isabela.head())
 
 
+### Definitions ### 
 
+ENTITY_TYPES = ['resource', 'civilian', 'blockage', 'duck']
+ENTITY_TYPE_LABELS = ['Resources', 'Civilian Requests', 'Blockages', 'Duck Network']
+
+TRUNC_NEEDS = ['medical', 'food','water']
 
 ### Dashboard ###
 
@@ -135,6 +154,8 @@ option = [{'label':i, 'value':i} for i in [1,0]]
 app.config['suppress_callback_exceptions']=True 
 
 # app.scripts.config.serve_locally=True
+
+
 
 app.layout = html.Div([
     # Title
@@ -160,6 +181,16 @@ def render_content(tab):
     if tab == 'tab-1-requests':
         print('rendering tab1')
         return html.Div([
+                    html.Div([
+                        # multi-select 
+                        dcc.Dropdown(
+                            id='filter-entity-types',
+                            options=[{'label': label, 'value':et} for label, et 
+                                        in zip(ENTITY_TYPE_LABELS, ENTITY_TYPES)],
+                            value=ENTITY_TYPES,
+                            multi=True
+                        )
+                    ]),
                     html.Div([
                         # Dropdown menu for Medical
                         html.P(
@@ -197,6 +228,17 @@ def render_content(tab):
                                 multi=True,
                                 )
                             ),
+
+                        # Show hover info
+                        dcc.Markdown(textwrap.dedent(
+                            """
+                            **Hover Data**
+                            """)
+                            ),
+                        html.Pre(
+                            id='hover-data',
+                            style=styles['pre']
+                            )
                         ], 
                         style={"width": "15%", "float": "left"}
                     ),
@@ -208,11 +250,23 @@ def render_content(tab):
                     ]),
 
                     html.Div([
-                        dcc.Graph(id='food-bar',
-                                figure=px.bar(fake_data, x='food'),
-                                style={'width':'50%', 'display':'inline-block'}
-                                )
+                        html.H1('Summary Counts of Civilian Requests'),
+                        #!! Not interactive - not filtered - but should we allow clicking bar to filter?
+                            # would be tableau like but low priority
+                        dcc.Graph(
+                            id='requests-bar',
+                            figure=px.bar(fake_data[TRUNC_NEEDS]\
+                                            .melt(var_name='Request Type')\
+                                            .groupby('Request Type', as_index=False)\
+                                            .sum(),
+                                        y='Request Type',
+                                        x='value',
+                                        orientation='h')\
+                                    .update_yaxes(title='Number of Requests'), # chained layout edit
+                            style={'width':'50%', 'display':'inline-block'}
+                        ),
                     ]),
+                    
                 ]) # end tab 1 div
 
                 
@@ -249,8 +303,6 @@ def render_content(tab):
     [Input('medical-filter', 'value'),
      Input('food-filter', 'value'),
      Input('water-filter', 'value'),
-    #  Input('duck_id','value'),
-    #  Input('path_id','value')
     ]
 )
 def map_graph(med, food, water): #, duck_id, path_id
@@ -259,7 +311,9 @@ def map_graph(med, food, water): #, duck_id, path_id
     df = df[df['water'].isin(water)]
     print(df.shape)
     fig = go.Figure()
-    fig.add_trace(go.Scattermapbox(
+    # add ducks
+    fig.add_trace(go.Scattermapbox( 
+        #!! Could this be done during preprocessing? 
         lat=isabela['coordinates'].apply(lambda x: ast.literal_eval(x)[0]).tolist(),
         lon=isabela['coordinates'].apply(lambda x: ast.literal_eval(x)[1]).tolist(),
         marker={
@@ -267,25 +321,15 @@ def map_graph(med, food, water): #, duck_id, path_id
             'color':'#FFFF00'
         }
     ))
-    # if duck_id:
-    #     dataframe=isabela[isabela['first_duck']==duck_id]
-    #     if path_id:
-    #         try:
-    #             path = dataframe.iloc[path_id]['clean_path']
-    #         except:
-    #             path = dataframe.iloc[0]['clean_path']
-    #         fig.add_trace(go.Scattermapbox(
-    #             lat = [i[0] for i in path],
-    #             lon = [i[1] for i in path],
-    #             mode='lines+markers',
 
-    #         ))
-    # else:
-    #     pass
 
     fig.add_trace(go.Scattermapbox(
-        lat=df['civilian_latitude'].tolist(),
-        lon=df['civilian_longitude'].tolist(),
+        lat=df['civilian_latitude'],
+        lon=df['civilian_longitude'],
+        mode='markers',
+        name='Civilian Requests',
+        hoverinfo='all',
+        customdata= df['name'], #!! for hover box - replace with more informative label
     ))
     fig.update_layout(
         autosize=True,
@@ -303,16 +347,83 @@ def map_graph(med, food, water): #, duck_id, path_id
         )
     return fig
 
-# @app.callback(
-#     Output('path_id', 'options'),
-#     [Input('duck_id','value')]
-# )
-# def get_options(duck_id):
-#     df = isabela[isabela['first_duck']==duck_id]
-#     return [{'label':idx, 'value':idx} for idx,val in enumerate(df['clean_path'])]
+@app.callback(
+    Output('hover-data', 'children'),
+    [Input('map-requests', 'hoverData')]
+)
+def display_hover_data(hoverData):
+    '''Display custom info when hovering over an entity
+    
+    Note: Flask auto escapes html, so need to replace <br> with \n 
+    while Dash hovertext accepts <br> as linebreak butnot \n'''
+
+    point = hoverData['points'][0] # go down to hovertext level
+    render_text = point['customdata'].replace('<br>', '\n') #@ for custom label, see entity_map_app.py
+    return render_text
 
 
+@app.callback(
+    Output('path_id', 'options'),
+    [Input('duck_id','value')]
+)
+def get_options(duck_id):
+    """Filter paths to only those beginning at 'first_duck'
+    """
+    df = isabela[isabela['first_duck']==duck_id]
+    return [{'label':idx, 'value':idx} for idx,val in enumerate(df['clean_path'])]
 
+@app.callback(
+    Output('map-network', 'figure'),
+    [Input('duck_id','value'),
+     Input('path_id','value')
+    ]
+)
+def map_network(duck_id, path_id):
+
+
+    fig = go.Figure()
+    # add ducks
+    fig.add_trace(go.Scattermapbox( 
+        #!! Could this be done during preprocessing? 
+        lat=isabela['coordinates'].apply(lambda x: ast.literal_eval(x)[0]).tolist(),
+        lon=isabela['coordinates'].apply(lambda x: ast.literal_eval(x)[1]).tolist(),
+        marker={
+            'size':10,
+            'color':'#FFFF00'
+        }
+    ))
+
+    if duck_id:
+        dataframe=isabela[isabela['first_duck']==duck_id]
+        if path_id:
+            try:
+                path = dataframe.iloc[path_id]['clean_path']
+            except:
+                path = dataframe.iloc[0]['clean_path']
+            fig.add_trace(go.Scattermapbox(
+                lat = [i[0] for i in path],
+                lon = [i[1] for i in path],
+                mode='lines+markers',
+            ))
+    else:
+        pass
+
+
+    fig.update_layout(
+        autosize=True,
+        hovermode='closest',
+        showlegend=False,
+        clickmode='event+select',
+        mapbox=go.layout.Mapbox(
+            accesstoken=MAPBOX_TOKEN,
+            center=go.layout.mapbox.Center(
+                    lat=fake_data['duck_latitude'].mean(),
+                    lon=fake_data['duck_longitude'].mean()
+                    ),
+            zoom=14,
+            ),
+        )
+    return fig
 
 ### RUNNING APP ###
 
