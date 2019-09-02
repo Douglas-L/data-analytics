@@ -304,7 +304,7 @@ def filter_duck(main_map):
     Output('individual_duck', 'figure'),
     [Input('main-map', 'clickData')]
 )
-def map_paths(main-map):
+def map_paths(main_map):
     duck = device_observations[device_observations['device_id']==main_map['points'][0]['text']]
 
 # @app.callback(
