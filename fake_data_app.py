@@ -4,6 +4,7 @@
 import pandas as pd
 import numpy as np
 import ast
+import json
 
 ### Random Imports
 from generate_random_data import Generate_Random_Data as grd
@@ -24,7 +25,7 @@ import plotly.express as px
 with open('./credentials.json', 'r') as f:
     credentials = json.load(f)
 MAPBOX_TOKEN = credentials['token']
-
+print(MAPBOX_TOKEN)
 
 # Reading in the data
 isabela = pd.read_csv("isabela_duck_deployment.csv")
@@ -50,37 +51,40 @@ for i in duck_list:
     for r in range(random.randint(1,6)):
         ids.append(i)
 fake_data['duck_id'] = ids
-
+## What does this do? 
+# print(fake_data['duck_id'])
 ### Generating random data to fill in dataframe
 
+FAKE_DATA_LEN = fake_data.shape[0]
+
 # Name data
-fake_data['name'] = grd.random_names(num=fake_data.shape[0])
+fake_data['name'] = grd.random_names(num=FAKE_DATA_LEN)
 
 # Phone data
-fake_data['phone'] = grd.random_digits(num=fake_data.shape[0])
+fake_data['phone'] = grd.random_digits(num=FAKE_DATA_LEN)
 
 # Occupants data
-fake_data['num_people'] = grd.random_ints(num=fake_data.shape[0])
+fake_data['num_people'] = grd.random_ints(num=FAKE_DATA_LEN)
 
 # Pets data
-fake_data['num_pets'] = grd.random_ints(num=fake_data.shape[0])
+fake_data['num_pets'] = grd.random_ints(num=FAKE_DATA_LEN)
 
 # Data for binary columns
 for col in ['medical', 'food', 'financial_aid', 'water']:
-        fake_data[col] = grd.binary(num=fake_data.shape[0])
+        fake_data[col] = grd.binary(num=FAKE_DATA_LEN)
 
 # Function to get coordinates of each duck
 def get_coordinates(row):
-    if isinstance(isabela.loc[isabela['duck_id']==row['duck_id'],:]['coordinates'].values[0], str):
-        center = [ast.literal_eval(i) for i in isabela.loc[isabela['duck_id']==row['duck_id'],:]['coordinates']][0]
+    if isinstance(isabela.loc[isabela['duck_id']==row['duck_id'], 'coordinates'].values[0], str):
+        center = [ast.literal_eval(i) for i in isabela.loc[isabela['duck_id']==row['duck_id'],'coordinates']][0]
     else:
-        center = isabela.loc[isabela['duck_id']==row['duck_id'],:]['coordinates'][0]
+        center = isabela.loc[isabela['duck_id']==row['duck_id'], 'coordinates'][0]
     distance = random.randint(30,150)
     return (center, grd.random_coor(num=1, radius=distance, center=center))
 
 # Applying 'get_coordinates' to get the coordinates of duck and civilians
 fake_data['coordinates'] = fake_data.apply(get_coordinates, axis=1)
-
+print(fake_data.head())
 # Separating 'coordinates' into 'duck_coordinates' and 'civilian coordinates'
 fake_data[['duck_coordinates', 'civilian_coordinates']] = fake_data['coordinates'].apply(pd.Series)
 
@@ -126,158 +130,134 @@ app = dash.Dash(__name__, external_stylesheets=EXTERNAL_STYLESHEETS)
 YN = {'Yes':1, 'No':0}
 option = [{'label':i, 'value':i} for i in [1,0]]
 
-app.config['suppress_callback_exceptions']=True
+# needed when assigning callbacks to components that are generated 
+# by other callbacks (and therefore not in the initial layout)
+app.config['suppress_callback_exceptions']=True 
+
 # app.scripts.config.serve_locally=True
 
 app.layout = html.Div([
     # Title
     html.H1("OWL Incident Command Map"),
 
-    # Filter for Medical Attention
-    html.Div([
-        # Dropdown menu for Medical
-        html.P(
-            'Medical Needed:',
-            ),
-        html.P(
-            dcc.Dropdown(
+    dcc.Tabs(
+            id='tabs-display', 
+            value='tab-1-requests', 
+            children= [
+                dcc.Tab(label='Civilian Requests', value='tab-1-requests'),
+                dcc.Tab(label='Duck Network Status', value='tab-2-network'),
+            ]),
+    
+    html.Div(id='tabs-content')
 
-
-                id='medical-fiter',
-                options=option,
-                value=[1,0],
-                multi=True,
-                )
-            ),
-        # # Dropdown menu for Food
-        # html.P(
-        #     'Food Needed:',
-        #     ),
-        # html.P(
-        #     dcc.Dropdown(
-        #         id='food-filter',
-        #         options=options,
-        #         value=[YN.get(i) for i in YN],
-        #         multi=True,
-        #         )
-        #     ),
-        # # Dropdown menu for Water
-        # html.P(
-        #     'Water Needed:',
-        #     ),
-        # html.P(
-        #     dcc.Dropdown(
-        #         id='water-filter',
-        #         options=options,
-        #         value=[YN.get(i) for i in YN],
-        #         multi=True,
-        #         )
-        #     ),
-
-        ],
-             style={"width": "15%", "float": "left"},
-                id='medical-filter',
-                options=option,
-                value=[YN.get(i) for i in YN],
-                multi=True,
-                )
-            ),
-        # Dropdown menu for Food
-        html.P(
-            'Food Needed:',
-            ),
-        html.P(
-            dcc.Dropdown(
-                id='food-filter',
-                options=option,
-                value=[YN.get(i) for i in YN],
-                multi=True,
-                )
-            ),
-        # Dropdown menu for Water
-        html.P(
-            'Water Needed:',
-            ),
-        html.P(
-            dcc.Dropdown(
-                id='water-filter',
-                options=option,
-                value=[YN.get(i) for i in YN],
-                multi=True,
-                )
-            ),
-        html.P(
-            'Duck Path'
-        ),
-        html.P(
-            dcc.Dropdown(
-                id='duck_id',
-                options=[{'label':i, 'value':i} for i in isabela['first_duck'].unique()],
-            )
-        ),
-        html.P(
-            dcc.Dropdown(
-                id='path_id',
-                )
-        ),
-        ],
-
-        style={"width": "15%", "float": "left"},
-
-             style={"width": "15%", "float": "left"},
-
-        ),
-
-    # Map
-    html.Div([
-        dcc.Graph(id='map',
-                  style={'width':'85%', 'display':'inline-block'})
-
-
-    ]),
-
-    #Bar Graph
-    html.Div([
-        dcc.Graph(id='food-bar',
-                  figure=px.bar(fake_data, x='food'),
-                  style={'width':'50%', 'display':'inline-block'}
-                  )
-
-
-
-    ])
 ])
+    
+    
+
+@app.callback(Output('tabs-content', 'children'),
+              [Input('tabs-display', 'value')])
+def render_content(tab):
+    if tab == 'tab-1-requests':
+        print('rendering tab1')
+        return html.Div([
+                    html.Div([
+                        # Dropdown menu for Medical
+                        html.P(
+                            'Medical Needed:',
+                            ),
+                        html.P(
+                            dcc.Dropdown(
+                                id='medical-filter',
+                                options=option,
+                                value=[YN.get(i) for i in YN],
+                                multi=True,
+                                )    
+                            ),
+                        # Dropdown menu for Food
+                        html.P(
+                            'Food Needed:',
+                            ),
+                        html.P(
+                            dcc.Dropdown(
+                                id='food-filter',
+                                options=option,
+                                value=[YN.get(i) for i in YN],
+                                multi=True,
+                                )
+                            ),
+                        # Dropdown menu for Water
+                        html.P(
+                            'Water Needed:',
+                            ),
+                        html.P(
+                            dcc.Dropdown(
+                                id='water-filter',
+                                options=option,
+                                value=[YN.get(i) for i in YN],
+                                multi=True,
+                                )
+                            ),
+                        ], 
+                        style={"width": "15%", "float": "left"}
+                    ),
+
+                    # Map
+                    html.Div([
+                        dcc.Graph(id='map-requests',
+                                style={'width':'85%', 'display':'inline-block'})
+                    ]),
+
+                    html.Div([
+                        dcc.Graph(id='food-bar',
+                                figure=px.bar(fake_data, x='food'),
+                                style={'width':'50%', 'display':'inline-block'}
+                                )
+                    ]),
+                ]) # end tab 1 div
+
+                
+    elif tab == 'tab-2-network':
+        print('rendering tab 2')
+        return html.Div([
+                    html.Div([
+                        html.P(
+                            'Duck Path'
+                        ),
+                        html.P(
+                            dcc.Dropdown(
+                                id='duck_id',
+                                options=[{'label':i, 'value':i} for i in isabela['first_duck'].unique()],
+                                )
+                            ),
+                        html.P(
+                            dcc.Dropdown(
+                                id='path_id',
+                                )
+                            ),
+                        ], 
+                        style={"width": "15%", "float": "left"}
+                    ),
+                    # Map 
+                    html.Div([
+                        dcc.Graph(id='map-network',
+                                style={'width':'85%', 'display':'inline-block'})
+                    ]),
+                ]) # end tab 2 div
 
 @app.callback(
-    Output('map', 'figure'),
-
-
-    [Input('medical-filter', 'value')]
-)
-def map_graph(med):
-    df = fake_data[fake_data['medical'].isin(med)]
-    fig = px.scatter_mapbox(df,
-                            lat='civilian_latitude',
-                            lon='civilian_longitude',
-                            # mode='markers',
-                            # marker=go.scattermapbox.Marker(size=9),
-                            zoom=15)
-    fig.update_mapboxes({'style':'satellite',
-                         'center':{'lat': fake_data['duck_latitude'].mean(),
-                                   'lon': fake_data['duck_longitude'].mean()}
-                         })
-    return fig
-
+    Output('map-requests', 'figure'),
     [Input('medical-filter', 'value'),
      Input('food-filter', 'value'),
      Input('water-filter', 'value'),
-     Input('duck_id','value'),
-     Input('path_id','value')]
+    #  Input('duck_id','value'),
+    #  Input('path_id','value')
+    ]
 )
-def map_graph(med, food, water, duck_id, path_id):
+def map_graph(med, food, water): #, duck_id, path_id
     df = fake_data[fake_data['medical'].isin(med)]
     df = df[df['food'].isin(food)]
     df = df[df['water'].isin(water)]
+    print(df.shape)
     fig = go.Figure()
     fig.add_trace(go.Scattermapbox(
         lat=isabela['coordinates'].apply(lambda x: ast.literal_eval(x)[0]).tolist(),
@@ -287,21 +267,21 @@ def map_graph(med, food, water, duck_id, path_id):
             'color':'#FFFF00'
         }
     ))
-    if duck_id:
-        dataframe=isabela[isabela['first_duck']==duck_id]
-        if path_id:
-            try:
-                path = dataframe.iloc[path_id]['clean_path']
-            except:
-                path = dataframe.iloc[0]['clean_path']
-            fig.add_trace(go.Scattermapbox(
-                lat = [i[0] for i in path],
-                lon = [i[1] for i in path],
-                mode='lines+markers',
+    # if duck_id:
+    #     dataframe=isabela[isabela['first_duck']==duck_id]
+    #     if path_id:
+    #         try:
+    #             path = dataframe.iloc[path_id]['clean_path']
+    #         except:
+    #             path = dataframe.iloc[0]['clean_path']
+    #         fig.add_trace(go.Scattermapbox(
+    #             lat = [i[0] for i in path],
+    #             lon = [i[1] for i in path],
+    #             mode='lines+markers',
 
-            ))
-    else:
-        pass
+    #         ))
+    # else:
+    #     pass
 
     fig.add_trace(go.Scattermapbox(
         lat=df['civilian_latitude'].tolist(),
@@ -313,7 +293,7 @@ def map_graph(med, food, water, duck_id, path_id):
         showlegend=False,
         clickmode='event+select',
         mapbox=go.layout.Mapbox(
-            accesstoken=mapbox_access_token,
+            accesstoken=MAPBOX_TOKEN,
             center=go.layout.mapbox.Center(
                     lat=fake_data['duck_latitude'].mean(),
                     lon=fake_data['duck_longitude'].mean()
@@ -323,13 +303,13 @@ def map_graph(med, food, water, duck_id, path_id):
         )
     return fig
 
-@app.callback(
-    Output('path_id', 'options'),
-    [Input('duck_id','value')]
-)
-def get_options(duck_id):
-    df = isabela[isabela['first_duck']==duck_id]
-    return [{'label':idx, 'value':idx} for idx,val in enumerate(df['clean_path'])]
+# @app.callback(
+#     Output('path_id', 'options'),
+#     [Input('duck_id','value')]
+# )
+# def get_options(duck_id):
+#     df = isabela[isabela['first_duck']==duck_id]
+#     return [{'label':idx, 'value':idx} for idx,val in enumerate(df['clean_path'])]
 
 
 
