@@ -26,6 +26,7 @@ from generate_random_data import Generate_Random_Data as grd
 
 # to be used as as options for multi-select 
 ENTITY_TYPES = ['resource', 'civilian', 'blockage', 'duck']
+ENTITY_TYPE_LABELS = ['Resources', 'Civilian Requests', 'Blockages', 'Duck Network']
 
 #@ Unused 
 # #!! color selection to stand out
@@ -105,34 +106,7 @@ EXTERNAL_STYLESHEETS = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 # -- FUNCTIONS -- # 
 
-#$ 
-# def load_ducks(num_ducks=10):
-#     """Query ducks table"""
-
-#     #rand Generate ducks 
-#     device_types = np.random.choice(['papa-duck', 'mama-duck', 'duck'], size=num_ducks)
-#     duck_id_candidates = ['5QOZlOxJECBv', 'cVDXZ9fljbIh', 'Qnhq1G5Rdwuv', 'T1PaUmJjbFcO',
-#        '0IUUAhmA99lq', '2lmrjdoJ237Z', 'hAkKlMLz8qgM', 'eeusfZ8AE8mv',
-#        'xioGCMhFLPC8', 'iJWI1F0QggHr', 'RV5CEfaDzuTD', 'KxqoWN44irrF',
-#        'mtldKD0Eslrz', '0P9pqRkY8yXv', 'NLZFD3yj4Oug', 'Hej9OwFoEdnR',
-#        '1gIOGluTtwiW', 'VEuwAoRLhL25', 'r8Zm272RIu5s', 'Szo4vS0LIFrO',
-#        'BZlCvDsdq6WR']
-#     duck_ids = np.random.choice(duck_id_candidates, size=num_ducks)
-#     ducks = pd.DataFrame({'device_type': device_types, 'device_id':duck_ids})
-#     #rand
-#     pr_coor = (18.5085, -67.07266)
-#     pr_radius = 2500
-#     ducks['location'] = grd.random_coor(num=num_ducks, radius=pr_radius, center=pr_coor)
-#     ducks['location'] = ducks['location'].map(lambda x: str(x[0]) + ',' + str(x[1]))
-
-#     # Unpack latitude and longitude -- VALIDATE ALWAYS EXIST as string with comma
-#     ducks[['lat', 'lon']] = ducks['location'].str.split(pat=',', expand=True)
-#     ducks['lat'] = ducks['lat'].astype(float)
-#     ducks['lon'] = ducks['lon'].astype(float)
-
-#     return ducks.drop(columns='location')
-
-
+#@
 def load_resources():
     """Query resources table"""
 
@@ -305,7 +279,8 @@ app.layout = html.Div([
         # multi-select 
         dcc.Dropdown(
             id='filter-entity-types',
-            options=[{'label': i, 'value':i} for i in ENTITY_TYPES],
+            options=[{'label': label, 'value':et} for label, et 
+                        in zip(ENTITY_TYPE_LABELS, ENTITY_TYPES)],
             value=ENTITY_TYPES,
             multi=True
         ),
